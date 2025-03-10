@@ -1,3 +1,4 @@
+from matplotlib import pyplot as plt
 from numpy import array, mean, median
 from scipy.stats import iqr, mode, skew, kurtosis, entropy
 from sklearn.neighbors import KernelDensity
@@ -19,6 +20,11 @@ files = [
     "C:/Users/corna/Downloads/389 worms - nicotine3rawxlsx.csv",
     "C:/Users/corna/Downloads/389 worms - nicotine4rawxlsx.csv"
 ]
+control_files = []
+nicotine_files = []
+
+
+
 results = []
 
 for file in files:
@@ -32,11 +38,17 @@ for file in files:
     active_pump_rate = a.find_active_pump_rate(active_periods, e_locations, sample_rate,total_active_time)
     avg_active_pump_rate = a.find_active_pump_rate(active_periods, e_locations, sample_rate, total_active_time)
 
-    print(f"File: {file}")
-    print(f"Active Pump Rate: {active_pump_rate:.2f} pumps/s")
+    #print(f"File: {file}")
+    #print(f"Active Pump Rate: {active_pump_rate:.2f} pumps/s")
+
+    if 'control' in file:
+        control_files.append(file)
+    elif 'nicotine' in file:
+        nicotine_files.append(file)
+
 
     a.plot_active_inactive_timeline(active_periods, inactive_periods)
-    a.plot_raster(e_times)
+    #a.plot_raster(e_times)
 
     total_time = e_times[-1] - e_times[0]
     inactive_time = total_time - total_active_time
@@ -71,7 +83,7 @@ for file in files:
     burst_frequency = num_active_periods / total_time if total_time > 0 else 0  # How often bursts occur per second
 
     results.append({
-        "File": file.split("/")[-1],  # Get filename only
+        #"File": file.split("/")[-1],  # Get filename only
         #"Total Pumps": total_pumps,
         #"Total Time (s)": total_time,
         #"Active Time (s)": total_active_time,
@@ -93,12 +105,49 @@ for file in files:
         #"Std Dev of IPI RE(s)": std_dev_ipi_re,
         #"Burst Frequency (Hz)": burst_frequency,
         #"Total Average Pump Rate": total_pumps/total_time
-        "Mean E Spike Amplitude": mean(E_amplitude),
-        "Median E Spike Amplitude": median(E_amplitude),
-        "Mean R Spike Amplitude": mean(R_amplitude),
-        "Median R Spike Amplitude": median(R_amplitude),
-        "E/R Spike Mean Ratio": mean(E_amplitude)/mean(R_amplitude),
-        "E/R Spike Median Ratio": median(E_amplitude) / median(R_amplitude)
+        #"Mean E Spike Amplitude": mean(E_amplitude),
+        #"Median E Spike Amplitude": median(E_amplitude),
+        #"Mean R Spike Amplitude": mean(R_amplitude),
+        #"Median R Spike Amplitude": median(R_amplitude),
+        #"E/R Spike Mean Ratio": mean(E_amplitude)/mean(R_amplitude),
+        #"E/R Spike Median Ratio": median(E_amplitude) / median(R_amplitude)
     })
 
 print(results)
+
+all_files = control_files + nicotine_files
+
+event_traces = []  # Store event times for raster plot
+file_labels = []
+
+for idx, file in enumerate(all_files):
+    df, e_locations, e_times, r_locations, total_pumps, sample_rate, ipi_threshold, r_times, ipi_data_re, R_amplitude, E_amplitude = a.read_data(
+        file)
+
+    inactive_periods = a.detect_nonactive_segments(e_locations, r_locations, ipi_threshold, sample_rate)
+    active_periods = a.list_active_segments(e_locations, r_locations, sample_rate, inactive_periods)
+    total_active_time = sum(period[1] - period[0] for period in active_periods)
+    active_pump_rate = a.find_active_pump_rate(active_periods, e_locations, sample_rate, total_active_time)
+
+    #a.plot_active_inactive_timeline(active_periods, inactive_periods)
+    #a.plot_raster(e_times)
+
+    event_traces.append(e_times)
+    file_labels.append(file)
+
+# Create a combined raster plot
+fig, ax = plt.subplots(figsize=(15, len(all_files) * 0.5),dpi=300)
+
+for idx, (e_times, file) in enumerate(zip(event_traces, file_labels)):
+    ax.vlines(e_times, idx - 0.2, idx + 0.4, color='black',linewidth=0.5)
+
+    # Draw border between control and nicotine
+    if file in nicotine_files and idx > 0 and file_labels[idx - 1] in control_files:
+        ax.axhline(idx - 0.5, color='red', linestyle='--', linewidth=2)
+
+ax.set_yticks(range(len(all_files)))
+ax.set_yticklabels(file_labels)
+ax.set_xlabel("Time (s)")
+ax.set_ylabel("Files")
+ax.set_title("Raster Plot of All Traces")
+#plt.show()

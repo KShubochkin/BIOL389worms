@@ -138,15 +138,14 @@ def plot_active_inactive_timeline(active_periods, inactive_periods):
         ax.barh(1, end - start, left=start, color='green', height=0.3)
     for start, end in inactive_periods:
         ax.barh(1, end - start, left=start, color='red', height=0.3)
-
-    ax.set_xlabel("Time (s)")
     ax.set_yticks([])
-    ax.set_title("Active vs. Inactive Periods Over Time")
-
-    ax.legend(handles=[
-        mpatches.Patch(color='green', label='Active'),
-        mpatches.Patch(color='red', label='Inactive')
-    ])
+    if len(active_periods) == 13:
+        ax.set_title("Active vs. Inactive Periods Over Time")
+        ax.set_xlabel("Time (s)")
+        ax.legend(handles=[
+            mpatches.Patch(color='green', label='Active'),
+            mpatches.Patch(color='red', label='Inactive')
+        ])
 
     plt.show()
 

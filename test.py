@@ -47,7 +47,7 @@ plt.show()
 # Run Mann-Whitney U test
 mw_results = {}
 for var in variables:
-    stat, p = stats.mannwhitneyu(control[var], nicotine[var],alternative='two-sided')
+    stat, p = stats.mannwhitneyu(control[var], nicotine[var],alternative='greater')
     mw_results[var] = {'statistic': stat, 'p-value': p}
     print(var,mw_results[var])
 
@@ -61,11 +61,12 @@ num_vars = len(variables)
 fig, axes = plt.subplots(nrows=(num_vars // 3) + (num_vars % 3 > 0), ncols=3, figsize=(15, num_vars * 1.5))
 axes = axes.flatten()
 
+units = ("Hz", "Percent %", "Time (s)", "Time (s)", "Time (s)", "Time (s)", "Time (s)", "Time (s)", "Hz", "Count", "Time (s)", "Value", "Count", "log(Probability)", "log(Probability)", "log(Probability)", "log(Probability)", "Value", "Value")
 for i, var in enumerate(variables):
     sns.boxplot(x='group', y=var, data=combined, hue="group", ax=axes[i])
     axes[i].set_title(var, fontsize=10)
     axes[i].set_xlabel("")
-    axes[i].set_ylabel("Value", fontsize=9)
+    axes[i].set_ylabel(units[i], fontsize=9)
 
 for i in range(len(axes)):
     if i >= num_vars:

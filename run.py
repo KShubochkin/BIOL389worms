@@ -62,6 +62,7 @@ for file in files:
     burst_frequency = num_active_periods / total_time if total_time > 0 else 0  # How often bursts occur per second
 
 
+
     def calculate_advanced_stats():
         if len(inter_pump_intervals) > 1:
             ipiarray = array(inter_pump_intervals)
