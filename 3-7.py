@@ -50,6 +50,7 @@ ipi_nspread_df = DataFrame()
 for file in files:
     df, e_locations, e_times, r_locations, total_pumps, sample_rate, r_times, ipi_data_re, R_amplitude, E_amplitude, RtoE = read_data(file,index)
     name = worm_name[index] #RETURN
+    ipis = np.array(RtoE)
     start = valid_interval[index][0]
     end = valid_interval[index][1]
     time = end-start
@@ -72,10 +73,10 @@ for file in files:
     ramp=stats.mean(R_amplitude)
     if worm_type[index] == 'c':
         group = "control"
-        control.append((name,pump_rate,pump_count,std,variance,eamp,ramp,inter_mean,inter_median,inter_std,inter_skew[0]))
+        control.append((name,pump_rate,pump_count,std,variance,eamp,ramp,inter_mean,inter_median,inter_std,inter_skew[0],ipis))
     elif worm_type[index] == 'n':
         group = "nicotine"
-        nicotine.append((name, pump_rate, pump_count, std, variance,eamp,ramp,inter_mean,inter_median, inter_std, inter_skew[0]))
+        nicotine.append((name, pump_rate, pump_count, std, variance,eamp,ramp,inter_mean,inter_median, inter_std, inter_skew[0],ipis))
     print (f"{name},pump rate {pump_rate}, pump count {pump_count},std {std}, variance {variance}, imean {inter_mean}, imed {inter_median}, istd {inter_std}\n")
 
     index=index+1
@@ -109,7 +110,7 @@ R_amp_stat = st.mannwhitneyu([x[6] for x in control],[x[6] for x in nicotine])
 im_stat = st.mannwhitneyu([x[7] for x in control],[x[7] for x in nicotine])
 imd_stat = st.mannwhitneyu([x[8] for x in control],[x[8] for x in nicotine])
 print([x[9] for x in control],[x[9] for x in nicotine])
-istd_stat = st.mannwhitneyu([x[9] for x in control],[x[9] for x in nicotine], alternative='two-sided')
+istd_stat = st.mannwhitneyu([x[9] for x in control],[x[9] for x in nicotine], alternative='greater')
 iskew_stat = st.mannwhitneyu([x[10] for x in control],[x[10] for x in nicotine], alternative='greater')
 
 
@@ -133,3 +134,120 @@ plt.xlabel('Experimental Group')
 plt.show()
 
 print(f"PR: {pump_rate_stat},\nstd: {std_stat}, \nvariance: {var_stat}, \nEamp: {E_amp_stat}, \nRamp: {R_amp_stat},\n IM: {im_stat},\nIMD: {imd_stat}, \nISTD: {istd_stat}, \nISkew: {iskew_stat}")
+
+# Example data: Replace these with your actual distributions
+control_data = [
+    control[0][11],control[1][11],control[2][11],control[3][11],control[4][11]
+]
+
+nicotine_data = [
+    nicotine[0][11],nicotine[1][11],nicotine[2][11],nicotine[3][11]
+]
+
+### Approach 1: Pooled Comparison ###
+pooled_control = np.concatenate(control_data)
+pooled_nicotine = np.concatenate(nicotine_data)
+
+ks_stat_pooled, p_value_pooled = st.ks_2samp(pooled_control, pooled_nicotine)
+print("Pooled Comparison:")
+print(f"KS Statistic: {ks_stat_pooled}")
+print(f"P-value: {p_value_pooled}")
+if p_value_pooled < 0.05:
+    print("The pooled distributions are significantly different (p < 0.05).\n")
+else:
+    print("The pooled distributions are not significantly different (p >= 0.05).\n")
+
+### Approach 2: Trial-by-Trial Comparison ###
+p_values = []
+ks_stats = []
+
+for control_trial in control_data:
+    for nicotine_trial in nicotine_data:
+        ks_stat, p_value = st.ks_2samp(control_trial, nicotine_trial)
+        ks_stats.append(ks_stat)
+        p_values.append(p_value)
+
+# Summarize the results
+avg_ks_stat = np.mean(ks_stats)
+avg_p_value = np.mean(p_values)
+sig_tests = sum(1 for p in p_values if p < 0.05)
+
+print("Trial-by-Trial Comparison:")
+print(f"Average KS Statistic: {avg_ks_stat}")
+print(f"Average P-value: {avg_p_value}")
+print(f"Number of significant tests (p < 0.05): {sig_tests} out of {len(p_values)}")
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+import pandas as pd
+
+
+def plot_figures(control, nicotine):
+    # Convert data to DataFrame for easy plotting
+    df_control = pd.DataFrame(control, columns=["Name", "Pump Rate", "Pump Count", "Std", "Variance", "E_amp", "R_amp",
+                                                "Inter_Mean", "Inter_Median", "Inter_Std", "Inter_Skew", "IPIs"])
+    df_nicotine = pd.DataFrame(nicotine,
+                               columns=["Name", "Pump Rate", "Pump Count", "Std", "Variance", "E_amp", "R_amp",
+                                        "Inter_Mean", "Inter_Median", "Inter_Std", "Inter_Skew", "IPIs"])
+    df_control["Group"] = "Control"
+    df_nicotine["Group"] = "Nicotine"
+    df = pd.concat([df_control, df_nicotine])
+
+    # Pump Rate Boxplot
+    plt.figure(figsize=(6, 4))
+    sns.boxplot(x="Group", y="Pump Rate", data=df)
+    sns.stripplot(x="Group", y="Pump Rate", data=df, color="orange")
+    plt.title("Pump Rate Comparison")
+    plt.ylabel("Pump Rate (Hz)")
+    plt.savefig("pump_rate_comparison.png")
+    plt.show()
+
+    # Interpump Interval Variability (Std) Boxplot
+    plt.figure(figsize=(6, 4))
+    sns.boxplot(x="Group", y="Inter_Std", data=df)
+    plt.title("Interpump Interval Variability")
+    plt.ylabel("Standard Deviation of Interpump Intervals")
+    plt.savefig("interpump_variability.png")
+    plt.show()
+
+    # Violin Plot of Interpump Intervals
+    ipi_control = np.concatenate(df_control["IPIs"].values)
+    ipi_nicotine = np.concatenate(df_nicotine["IPIs"].values)
+
+    plt.figure(figsize=(6, 4))
+    sns.violinplot(data=[ipi_control, ipi_nicotine], inner="quartile")
+    plt.xticks([0, 1], ["Control", "Nicotine"])
+    plt.title("Distribution of Interpump Intervals")
+    plt.ylabel("Interpump Interval (s)")
+    plt.savefig("interpump_distribution.png")
+    plt.show()
+
+    # Boxplot for E and R Amplitudes
+    plt.figure(figsize=(6, 4))
+    sns.boxplot(x="Group", y="E_amp", data=df)
+    plt.title("E-Amplitude Comparison")
+    plt.ylabel("E-Amplitude")
+    plt.savefig("E_amplitude_comparison.png")
+    plt.show()
+
+    plt.figure(figsize=(6, 4))
+    sns.boxplot(x="Group", y="R_amp", data=df)
+    plt.title("R-Amplitude Comparison")
+    plt.ylabel("R-Amplitude")
+    plt.savefig("R_amplitude_comparison.png")
+    plt.show()
+
+    # Histogram of Interpump Intervals
+    plt.figure(figsize=(6, 4))
+    sns.histplot(ipi_control, bins=30, kde=True, color='blue', label="Control", stat="density", alpha=0.6)
+    sns.histplot(ipi_nicotine, bins=30, kde=True, color='red', label="Nicotine", stat="density", alpha=0.6)
+    plt.title("Histogram of Interpump Intervals")
+    plt.xlabel("Interpump Interval (s)")
+    plt.legend()
+    plt.savefig("interpump_histogram.png")
+    plt.show()
+
+
+# Call function after running your data analysis
+plot_figures(control, nicotine)

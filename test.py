@@ -19,21 +19,22 @@ nicotine['group'] = 'nicotine'
 combined = pd.concat([control, nicotine])
 
 # Variables to visualize
-variables = ['Average pump rate during active periods', 'Percent Time Active', 'E-E IPI Mean', 'E-E IPI Median', 'E-E IPI STD',
-             'R-E IPI Mean', 'R-E IPI Median', 'R-E IPI STD', 'Total Average Pump Rate (Hz)', 'Total Pumps', 'Total Time (s)',
-             'Burst Frequency','Number of Inactive Periods','Mean E Spike Amplitude','Median E Spike Amplitude','Mean R Spike Amplitude','Median R Spike Amplitude','R/E Spike Mean Ratio','R/E Spike Median Ratio']
+variables = [ 'R-E IPI Median', 'R-E IPI STD', 'Total Average Pump Rate (Hz)', 'Total Pumps',
+             'Mean E Spike Amplitude','Mean R Spike Amplitude',]
 
 # Set up multiple subplots
 num_vars = len(variables)
 fig, axes = plt.subplots(nrows=(num_vars // 3) + (num_vars % 3 > 0), ncols=3, figsize=(15, num_vars * 1.5))
 axes = axes.flatten()
-
+letters = ['a.','b.','c.','d.','e.','f.']
 # Loop through each variable and create an individual boxplot
 for i, var in enumerate(variables):
+    j=0
     sns.boxplot(x='group', y=var, data=combined, hue="group", ax=axes[i])
-    axes[i].set_title(var, fontsize=10)
+    axes[i].set_title(f"{letters[i]} {var}", fontsize=10)
     axes[i].set_xlabel("")
     axes[i].set_ylabel("Value", fontsize=9)
+    j = j+1
 
 # Remove empty subplots if num_vars is not a multiple of 3
 for i in range(len(axes)):
